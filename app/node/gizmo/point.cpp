@@ -27,7 +27,8 @@ namespace olive {
 PointGizmo::PointGizmo(const Shape &shape, bool smaller, QObject *parent) :
   DraggableGizmo{parent},
   shape_(shape),
-  smaller_(smaller)
+  smaller_(smaller),
+  can_drag_in_group_(false)
 {
 }
 
@@ -44,15 +45,18 @@ PointGizmo::PointGizmo(QObject *parent) :
 void PointGizmo::Draw(QPainter *p) const
 {
   QRectF rect = GetDrawingRect(p->transform(), GetStandardRadius());
-  QVariant color = this->property("color");
+  QVariant v_color = this->property("color");
+  QColor color = Qt::white;
 
-  if (shape_ != kAnchorPoint) {
-    p->setPen(QPen(Qt::black, 0));
-    p->setBrush(Qt::white);
+  if (v_color.isValid())
+  {
+    color = v_color.value<QColor>();
   }
 
-  if (color.isValid()) {
-    p->setBrush(color.value<QColor>());
+  if (shape_ != kAnchorPoint) {
+    p->setBrush( IsHovered() ? QColor(0x20,0xFF, 0xFF) : (IsSelected() ? QColor(0xCC,0x00, 0xFF) : color));
+    p->setPen( IsHovered() ? QPen(QColor(0x10,0x80, 0x80),6) :
+                             (IsSelected() ? QPen(QColor(0x66,0x00, 0x80), 4) : QPen(color, 4)));
   }
 
   switch (shape_) {
@@ -77,12 +81,13 @@ void PointGizmo::Draw(QPainter *p) const
 
 QRectF PointGizmo::GetClickingRect(const QTransform &t) const
 {
-  return GetDrawingRect(t, GetStandardRadius());
+  // clicking rect is a little bigger than the painted rect
+  return GetDrawingRect(t, GetStandardRadius()*2.2);
 }
 
 double PointGizmo::GetStandardRadius()
 {
-  return QFontMetrics(qApp->font()).height() * 0.25;
+  return QFontMetrics(qApp->font()).height() * 0.3;
 }
 
 QRectF PointGizmo::GetDrawingRect(const QTransform &transform, double radius) const
@@ -100,8 +105,8 @@ QRectF PointGizmo::GetDrawingRect(const QTransform &transform, double radius) co
   }
 
   if (smaller_) {
-    width *= 0.5;
-    height *= 0.5;
+    width *= 0.6;
+    height *= 0.6;
   }
 
   return QRectF(point_.x() - width,
